@@ -36,7 +36,7 @@ impl<'a> Iterator for FileSearcher<'a> {
 
         match self.buf_reader.seek(SeekFrom::Start(self.offs as u64)) {
             Ok(_) => {}
-            Err(e) => return Some(Err(e))
+            Err(e) => return Some(Err(e)),
         }
 
         loop {
@@ -53,7 +53,7 @@ impl<'a> Iterator for FileSearcher<'a> {
                             self.offs += 1; // one past the match so we can try again if necessary
                             break;
                         }
-                        None => self.offs += n
+                        None => self.offs += n,
                     }
                 }
                 Err(e) => {
@@ -75,7 +75,10 @@ pub fn extract_to(src: &Path, dst: &Path) -> io::Result<()> {
     for result in searcher {
         let offs = result?;
         if extract_at_offset(src, offs, dst).is_ok() {
-            trace!("tarball found at offset {} was extracted successfully", offs);
+            trace!(
+                "tarball found at offset {} was extracted successfully",
+                offs
+            );
             found = true;
         }
     }
@@ -83,7 +86,10 @@ pub fn extract_to(src: &Path, dst: &Path) -> io::Result<()> {
     if found {
         Ok(())
     } else {
-        Err(io::Error::new(io::ErrorKind::Other, "no tarball found inside binary"))
+        Err(io::Error::new(
+            io::ErrorKind::Other,
+            "no tarball found inside binary",
+        ))
     }
 }
 

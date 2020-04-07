@@ -8,18 +8,18 @@ extern crate tar;
 extern crate tempdir;
 
 use clap::{App, AppSettings, Arg};
-use flate2::Compression;
 use flate2::write::GzEncoder;
-use rand::{thread_rng, Rng};
+use flate2::Compression;
 use rand::distributions::Alphanumeric;
+use rand::{thread_rng, Rng};
 use std::collections::HashMap;
 use std::error::Error;
 use std::fs;
-use std::iter;
 use std::fs::File;
 use std::io;
 use std::io::copy;
 use std::io::Write;
+use std::iter;
 use std::path::Path;
 use std::process;
 use tempdir::TempDir;
@@ -31,9 +31,12 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 const RUNNER_EXEC_MAGIC: &[u8] = b"tVQhhsFFlGGD3oWV4lEPST8I8FEPP54IM0q7daes4E1y3p2U2wlJRYmWmjPYfkhZ0PlT14Ls0j8fdDkoj33f2BlRJavLj3mWGibJsGt5uLAtrCDtvxikZ8UX2mQDCrgE\0";
 const RUNNER_UID_MAGIC: &[u8] = b"DR1PWsJsM6KxNbng9Y38\0";
 
-const RUNNER_LINUX_X64: &[u8] = include_bytes!("../../target/x86_64-unknown-linux-gnu/release/warp-runner");
-const RUNNER_MACOS_X64: &[u8] = include_bytes!("../../target/x86_64-apple-darwin/release/warp-runner");
-const RUNNER_WINDOWS_X64: &[u8] = include_bytes!("../../target/x86_64-pc-windows-gnu/release/warp-runner.exe");
+const RUNNER_LINUX_X64: &[u8] =
+    include_bytes!("../../target/x86_64-unknown-linux-gnu/release/warp-runner");
+const RUNNER_MACOS_X64: &[u8] =
+    include_bytes!("../../target/x86_64-apple-darwin/release/warp-runner");
+const RUNNER_WINDOWS_X64: &[u8] =
+    include_bytes!("../../target/x86_64-pc-windows-gnu/release/warp-runner.exe");
 
 lazy_static! {
     static ref RUNNER_BY_ARCH: HashMap<&'static str, &'static [u8]> = {
@@ -59,13 +62,13 @@ fn patch_runner(arch: &str, exec_name: &str, uid: &str) -> io::Result<Vec<u8>> {
     let runner_contents = RUNNER_BY_ARCH.get(arch).unwrap();
     let mut buf = runner_contents.to_vec();
 
-    write_magic(&mut buf, RUNNER_UID_MAGIC, uid);  
-    write_magic(&mut buf, RUNNER_EXEC_MAGIC, exec_name);  
+    write_magic(&mut buf, RUNNER_UID_MAGIC, uid);
+    write_magic(&mut buf, RUNNER_EXEC_MAGIC, exec_name);
     Ok(buf)
 }
 
 fn write_magic(buf: &mut Vec<u8>, magic: &[u8], new_value: &str) {
-        // Set the correct target executable name into the local magic buffer
+    // Set the correct target executable name into the local magic buffer
     let magic_len = magic.len();
     let mut new_magic = vec![0; magic_len];
     new_magic[..new_value.len()].clone_from_slice(new_value.as_bytes());
@@ -88,15 +91,15 @@ fn write_magic(buf: &mut Vec<u8>, magic: &[u8], new_value: &str) {
     buf[offs..offs + magic_len].clone_from_slice(&new_magic);
 }
 
-fn create_tgz(dirs: &Vec<&Path>, out: &Path) -> io::Result<()> {  
+fn create_tgz(dirs: &Vec<&Path>, out: &Path) -> io::Result<()> {
     let f = fs::File::create(out)?;
-    let gz = GzEncoder::new(f, Compression::best());    
+    let gz = GzEncoder::new(f, Compression::best());
     let mut tar = tar::Builder::new(gz);
     tar.follow_symlinks(false);
     for dir in dirs.iter() {
         println!("Compressing input directory {:?}...", dir);
-        tar.append_dir_all(".", dir)?;    
-    }         
+        tar.append_dir_all(".", dir)?;
+    }
     Ok(())
 }
 
@@ -113,33 +116,30 @@ fn create_app_file(out: &Path) -> io::Result<File> {
 
 #[cfg(target_family = "windows")]
 fn create_app_file(out: &Path) -> io::Result<File> {
-    fs::OpenOptions::new()
-        .create(true)
-        .write(true)
-        .open(out)
+    fs::OpenOptions::new().create(true).write(true).open(out)
 }
 
 fn create_app(runner_buf: &Vec<u8>, tgz_paths: &Vec<&Path>, out: &Path) -> io::Result<()> {
     let mut outf = create_app_file(out)?;
     outf.write_all(runner_buf)?;
-    
+
     for tgz_path in tgz_paths.iter() {
         let mut tgzf = fs::File::open(tgz_path)?;
-        copy(&mut tgzf, &mut outf)?;    
+        copy(&mut tgzf, &mut outf)?;
     }
 
     Ok(())
 }
 
 fn make_path(path_str: &str) -> &Path {
-    let path  = Path::new(path_str);    
+    let path = Path::new(path_str);
     if fs::metadata(path).is_err() {
         bail!("Cannot access specified input path {:?}", path);
     }
-    return &path;
+    &path
 }
 
-fn check_executable_exists(exec_path: &Path){
+fn check_executable_exists(exec_path: &Path) {
     match fs::metadata(&exec_path) {
         Err(_) => {
             bail!("Cannot find file {:?}", exec_path);
@@ -152,14 +152,14 @@ fn check_executable_exists(exec_path: &Path){
     }
 }
 
-fn generate_uid() -> String  {
-    return thread_rng()
+fn generate_uid() -> String {
+    thread_rng()
         .sample_iter(&Alphanumeric)
         .take(RUNNER_UID_MAGIC.len() - 1)
-        .collect(); 
+        .collect()
 }
 
-fn main() -> Result<(), Box<Error>> {
+fn main() -> Result<(), Box<dyn Error>> {
     let args = App::new(APP_NAME)
         .settings(&[AppSettings::ArgRequiredElseHelp, AppSettings::ColoredHelp])
         .version(VERSION)
@@ -179,7 +179,7 @@ fn main() -> Result<(), Box<Error>> {
             .value_name("input_dir")
             .help("Sets the input directories for packing. Might provide multiple directories, but the first must contain the executed application")
             .display_order(2)
-            .takes_value(true)            
+            .takes_value(true)
             .required(true)
             .multiple(true)
             .min_values(1))
@@ -189,7 +189,7 @@ fn main() -> Result<(), Box<Error>> {
             .value_name("input_tgz")
             .help("Sets additional already packed tar-gzipped files to be included in package. Might provide multiple files. Can be used with --disable_exec_check param if main executable file is in packed file.")
             .display_order(3)
-            .takes_value(true)            
+            .takes_value(true)
             .required(false)
             .multiple(true))
         .arg(Arg::with_name("exec")
@@ -226,21 +226,27 @@ fn main() -> Result<(), Box<Error>> {
 
     let arch = args.value_of("arch").unwrap();
     if !RUNNER_BY_ARCH.contains_key(&arch) {
-        bail!("Unknown architecture specified: {}, supported: {:?}", arch, RUNNER_BY_ARCH.keys());
+        bail!(
+            "Unknown architecture specified: {}, supported: {:?}",
+            arch,
+            RUNNER_BY_ARCH.keys()
+        );
     }
 
     let tmp_dir = TempDir::new(APP_NAME)?;
     let main_tgz = tmp_dir.path().join("input.tgz");
     let main_tgz_path = main_tgz.as_path();
 
-    let input_dirs: Vec<&Path> = args.values_of("input_dir")    
+    let input_dirs: Vec<&Path> = args
+        .values_of("input_dir")
         .unwrap()
         .map(make_path)
         .collect();
 
-    let input_tgzs: Vec<&Path> = args.values_of("input_tgz")
+    let input_tgzs: Vec<&Path> = args
+        .values_of("input_tgz")
         .unwrap_or(clap::Values::default())
-        .map(make_path)        
+        .map(make_path)
         .chain(iter::once(main_tgz_path))
         .collect();
 
@@ -255,7 +261,7 @@ fn main() -> Result<(), Box<Error>> {
         check_executable_exists(&exec_path);
     }
 
-    let mut uid:String = "".to_string();
+    let mut uid: String = "".to_string();
     let do_generate_uid = args.is_present("unique_id");
     if do_generate_uid {
         uid = generate_uid();
@@ -263,10 +269,13 @@ fn main() -> Result<(), Box<Error>> {
 
     let runner_buf = patch_runner(&arch, &exec_name, &uid)?;
 
-    create_tgz(&input_dirs, &main_tgz_path)?; 
+    create_tgz(&input_dirs, &main_tgz_path)?;
 
     let exec_name = Path::new(args.value_of("output").unwrap());
-    println!("Creating self-contained application binary {:?}...", exec_name);
+    println!(
+        "Creating self-contained application binary {:?}...",
+        exec_name
+    );
     create_app(&runner_buf, &input_tgzs, &exec_name)?;
     println!("All done");
     Ok(())

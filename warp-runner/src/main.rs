@@ -12,22 +12,23 @@ use std::io;
 use std::path::*;
 use std::process;
 
-mod extractor;
 mod executor;
+mod extractor;
 
-static TARGET_FILE_NAME_BUF: &'static [u8] = b"tVQhhsFFlGGD3oWV4lEPST8I8FEPP54IM0q7daes4E1y3p2U2wlJRYmWmjPYfkhZ0PlT14Ls0j8fdDkoj33f2BlRJavLj3mWGibJsGt5uLAtrCDtvxikZ8UX2mQDCrgE\0";
-static TARGET_UID_BUF: &'static [u8] = b"DR1PWsJsM6KxNbng9Y38\0";
+static TARGET_FILE_NAME_BUF: &[u8] = b"tVQhhsFFlGGD3oWV4lEPST8I8FEPP54IM0q7daes4E1y3p2U2wlJRYmWmjPYfkhZ0PlT14Ls0j8fdDkoj33f2BlRJavLj3mWGibJsGt5uLAtrCDtvxikZ8UX2mQDCrgE\0";
+static TARGET_UID_BUF: &[u8] = b"DR1PWsJsM6KxNbng9Y38\0";
 
 fn build_uid() -> &'static str {
-    return read_magic("TARGET_UID_BUF", &TARGET_UID_BUF)
+    read_magic("TARGET_UID_BUF", &TARGET_UID_BUF)
 }
 
 fn target_file_name() -> &'static str {
-    return read_magic("TARGET_FILE_NAME_BUF", &TARGET_FILE_NAME_BUF)
+    read_magic("TARGET_FILE_NAME_BUF", &TARGET_FILE_NAME_BUF)
 }
 
 fn read_magic(magic_name: &str, magic: &'static [u8]) -> &'static str {
-    let nul_pos = magic.iter()
+    let nul_pos = magic
+        .iter()
         .position(|elem| *elem == b'\0')
         .expect(&format!("{} has no NUL terminator", magic_name));
 
@@ -52,12 +53,10 @@ fn extract(exe_path: &Path, cache_path: &Path) -> io::Result<()> {
     Ok(())
 }
 
-fn main() -> Result<(), Box<Error>> {
+fn main() -> Result<(), Box<dyn Error>> {
     if env::var("WARP_TRACE").is_ok() {
         simple_logger::init_with_level(Level::Trace)?;
     }
-
-
 
     let build_uid = build_uid();
     let self_path = env::current_exe()?;
