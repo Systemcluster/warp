@@ -4,7 +4,6 @@ extern crate flate2;
 #[macro_use]
 extern crate lazy_static;
 extern crate rand;
-extern crate reqwest;
 extern crate tar;
 extern crate tempdir;
 
