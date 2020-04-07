@@ -29,15 +29,17 @@ fn ensure_executable(target: &Path) {
 fn do_execute(target: &Path, args: &[String]) -> io::Result<i32> {
     ensure_executable(target);
 
-    Ok(Command::new(target)
+    let mut command = Command::new(target);
+    let mut command = command
         .args(args)
         .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .spawn()?
-        .wait()?
-        .code()
-        .unwrap_or(1))
+        .stderr(Stdio::inherit());
+    #[cfg(feature = "current_dir")]
+    {
+        command = command.current_dir(env::current_dir()?);
+    }
+    Ok(command.spawn()?.wait()?.code().unwrap_or(1))
 }
 
 #[cfg(target_family = "windows")]
@@ -63,24 +65,28 @@ fn do_execute(target: &Path, args: &[String]) -> io::Result<i32> {
         cmd_args.push(target_str.to_string());
         cmd_args.extend_from_slice(&args);
 
-        Ok(Command::new("cmd")
+        let mut command = Command::new("cmd");
+        let mut command = command
             .args(cmd_args)
             .stdin(Stdio::inherit())
             .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
-            .spawn()?
-            .wait()?
-            .code()
-            .unwrap_or(1))
+            .stderr(Stdio::inherit());
+        #[cfg(feature = "current_dir")]
+        {
+            command = command.current_dir(env::current_dir()?);
+        }
+        Ok(command.spawn()?.wait()?.code().unwrap_or(1))
     } else {
-        Ok(Command::new(target)
+        let mut command = Command::new(target);
+        let mut command = command
             .args(args)
             .stdin(Stdio::inherit())
             .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
-            .spawn()?
-            .wait()?
-            .code()
-            .unwrap_or(1))
+            .stderr(Stdio::inherit());
+        #[cfg(feature = "current_dir")]
+        {
+            command = command.current_dir(env::current_dir()?);
+        }
+        Ok(command.spawn()?.wait()?.code().unwrap_or(1))
     }
 }
