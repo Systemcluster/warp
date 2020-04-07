@@ -103,9 +103,9 @@ fn write_magic(buf: &mut Vec<u8>, magic: &[u8], new_value: &str) {
     buf[offs..offs + magic_len].clone_from_slice(&new_magic);
 }
 
-fn create_tgz(dirs: &Vec<&Path>, out: &Path) -> io::Result<()> {
+fn create_tgz(dirs: &Vec<&Path>, out: &Path, compression: u32) -> io::Result<()> {
     let f = fs::File::create(out)?;
-    let gz = GzEncoder::new(f, Compression::best());
+    let gz = GzEncoder::new(f, Compression::new(compression));
     let mut tar = tar::Builder::new(gz);
     tar.follow_symlinks(false);
     for dir in dirs.iter() {
@@ -234,6 +234,19 @@ fn main() -> Result<(), Box<dyn Error>> {
             .display_order(7)
             .takes_value(false)
             .required(false))
+        .arg(Arg::with_name("compression")
+            .short("c")
+            .long("compression")
+            .value_name("compression")
+            .help("Sets the compression level")
+            .validator(|c: String| {
+                if let Ok(u) = c.parse::<u32>() { if u <= 9 { return Ok(()) } }
+                Err(String::from("compression level must be a number between 0 and 9"))
+            })
+            .display_order(8)
+            .takes_value(true)
+            .required(false)
+            .default_value("9"))
         .get_matches();
 
     if RUNNER_BY_ARCH.is_empty() {
@@ -283,9 +296,15 @@ fn main() -> Result<(), Box<dyn Error>> {
         uid = generate_uid();
     }
 
+    let compression = args
+        .value_of("compression")
+        .unwrap()
+        .parse::<u32>()
+        .unwrap();
+
     let runner_buf = patch_runner(&arch, &exec_name, &uid)?;
 
-    create_tgz(&input_dirs, &main_tgz_path)?;
+    create_tgz(&input_dirs, &main_tgz_path, compression)?;
 
     let exec_name = Path::new(args.value_of("output").unwrap());
     println!(
