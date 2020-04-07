@@ -130,6 +130,9 @@ fn create_app_file(out: &Path) -> io::Result<File> {
 
 #[cfg(target_family = "windows")]
 fn create_app_file(out: &Path) -> io::Result<File> {
+    if out.is_file() {
+        fs::remove_file(out)?;
+    }
     fs::OpenOptions::new().create(true).write(true).open(out)
 }
 
