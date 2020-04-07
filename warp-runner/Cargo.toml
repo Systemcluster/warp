@@ -12,3 +12,8 @@ dirs = "2.0.2"
 winapi = "0.3.8"
 log = "0.4.8"
 simple_logger = "1.6.0"
+
+[features]
+default=[]
+runtime-path-alternative = []
+runtime-path-windows-temp = []

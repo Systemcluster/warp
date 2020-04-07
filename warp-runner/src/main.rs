@@ -39,12 +39,35 @@ fn read_magic(magic_name: &str, magic: &'static [u8]) -> &'static str {
         .expect(&format!("Can't convert {} CStr to str", magic_name))
 }
 
-fn cache_path(target: &str) -> PathBuf {
-    dirs::data_local_dir()
-        .expect("No data local dir found")
-        .join("warp")
-        .join("packages")
-        .join(target)
+#[cfg(not(feature = "runtime-path-alternative"))]
+fn cache_path(file_name: &str, build_uid: &str) -> PathBuf {
+    let cache_folder_name = {
+        if !build_uid.is_empty() {
+            format!("{}.{}", file_name, build_uid)
+        } else {
+            format!("{}", file_name)
+        }
+    };
+    let mut dir = dirs::data_local_dir().expect("No data local dir found");
+    #[cfg(all(feature = "runtime-path-windows-temp", target_family = "windows"))]
+    {
+        dir = dir.join("Temp");
+    }
+    dir = dir.join("warp").join("packages").join(cache_folder_name);
+    dir
+}
+#[cfg(feature = "runtime-path-alternative")]
+fn cache_path(file_name: &str, build_uid: &str) -> PathBuf {
+    let mut dir = dirs::data_local_dir().expect("No data local dir found");
+    #[cfg(all(feature = "runtime-path-windows-temp", target_family = "windows"))]
+    {
+        dir = dir.join("Temp");
+    }
+    dir = dir.join(file_name).join("app");
+    if !build_uid.is_empty() {
+        dir = dir.join(build_uid)
+    }
+    dir
 }
 
 fn extract(exe_path: &Path, cache_path: &Path) -> io::Result<()> {
@@ -60,10 +83,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let build_uid = build_uid();
     let self_path = env::current_exe()?;
-    let self_file_name = self_path.file_name().unwrap();
-    let cache_folder_name = format!("{}.{}", self_file_name.to_string_lossy(), build_uid);
-    let cache_path = cache_path(&cache_folder_name);
+    let self_file_name = self_path.file_name().unwrap().to_string_lossy();
 
+    let cache_path = cache_path(&self_file_name, &build_uid);
     trace!("self_path={:?}", self_path);
     trace!("self_file_name={:?}", self_file_name);
     trace!("build_uid={:?}", build_uid);
