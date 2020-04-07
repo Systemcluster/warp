@@ -1,7 +1,7 @@
 [package]
 name = "warp-runner"
-version = "0.3.0"
-authors = ["Diego Giagio <diego@giagio.com>"]
+version = "0.4.0-dev"
+authors = ["Diego Giagio <diego@giagio.com>", "Marcel Sery <sery.m@email.cz>", "Christian Sdunek <me@systemcluster.me>"]
 edition = "2018"
 
 [dependencies]

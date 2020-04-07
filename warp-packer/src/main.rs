@@ -175,7 +175,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let args = App::new(APP_NAME)
         .settings(&[AppSettings::ArgRequiredElseHelp, AppSettings::ColoredHelp])
         .version(VERSION)
-        .author(AUTHOR)
+        .author(AUTHOR.replace(":", ", ").as_ref())
         .about("Create self-contained single binary application")
         .arg(Arg::with_name("arch")
             .short("a")
