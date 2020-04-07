@@ -12,3 +12,10 @@ rand = "0.7.3"
 flate2 = "1.0.14"
 tar = "0.4.26"
 lazy_static = "1.4.0"
+
+[features]
+default = ["target-native"]
+target-native = []
+target-linux_x64 = []
+target-macos_x64 = []
+target-windows_x64 = []

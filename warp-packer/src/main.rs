@@ -31,18 +31,30 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 const RUNNER_EXEC_MAGIC: &[u8] = b"tVQhhsFFlGGD3oWV4lEPST8I8FEPP54IM0q7daes4E1y3p2U2wlJRYmWmjPYfkhZ0PlT14Ls0j8fdDkoj33f2BlRJavLj3mWGibJsGt5uLAtrCDtvxikZ8UX2mQDCrgE\0";
 const RUNNER_UID_MAGIC: &[u8] = b"DR1PWsJsM6KxNbng9Y38\0";
 
+#[cfg(all(feature = "target-native", target_family = "windows"))]
+const RUNNER_NATIVE: &[u8] = include_bytes!("../../target/release/warp-runner.exe");
+#[cfg(all(feature = "target-native", not(target_family = "windows")))]
+const RUNNER_NATIVE: &[u8] = include_bytes!("../../target/release/warp-runner");
+#[cfg(feature = "target-linux_x64")]
 const RUNNER_LINUX_X64: &[u8] =
     include_bytes!("../../target/x86_64-unknown-linux-gnu/release/warp-runner");
+#[cfg(feature = "target-macos_x64")]
 const RUNNER_MACOS_X64: &[u8] =
     include_bytes!("../../target/x86_64-apple-darwin/release/warp-runner");
+#[cfg(feature = "target-windows_x64")]
 const RUNNER_WINDOWS_X64: &[u8] =
     include_bytes!("../../target/x86_64-pc-windows-gnu/release/warp-runner.exe");
 
 lazy_static! {
     static ref RUNNER_BY_ARCH: HashMap<&'static str, &'static [u8]> = {
         let mut m = HashMap::new();
+        #[cfg(feature = "target-native")]
+        m.insert("native", RUNNER_NATIVE);
+        #[cfg(feature = "target-linux_x64")]
         m.insert("linux-x64", RUNNER_LINUX_X64);
+        #[cfg(feature = "target-macos_x64")]
         m.insert("macos-x64", RUNNER_MACOS_X64);
+        #[cfg(feature = "target-windows_x64")]
         m.insert("windows-x64", RUNNER_WINDOWS_X64);
         m
     };
@@ -223,6 +235,10 @@ fn main() -> Result<(), Box<dyn Error>> {
             .takes_value(false)
             .required(false))
         .get_matches();
+
+    if RUNNER_BY_ARCH.is_empty() {
+        bail!("No architectures supported in this build")
+    }
 
     let arch = args.value_of("arch").unwrap();
     if !RUNNER_BY_ARCH.contains_key(&arch) {
