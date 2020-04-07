@@ -29,6 +29,7 @@ const AUTHOR: &str = env!("CARGO_PKG_AUTHORS");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const RUNNER_EXEC_MAGIC: &[u8] = b"tVQhhsFFlGGD3oWV4lEPST8I8FEPP54IM0q7daes4E1y3p2U2wlJRYmWmjPYfkhZ0PlT14Ls0j8fdDkoj33f2BlRJavLj3mWGibJsGt5uLAtrCDtvxikZ8UX2mQDCrgE\0";
+const RUNNER_NAME_MAGIC: &[u8] = b"4XMKSjaEZN9eC9LlptwBG3A7ysWD0L5hNK6tNrOiEd0p76Fu3ImTpcUjgMoWGyO1JS0Db2gqmlVEH7rW12vSmLN8x6M1GS0nE5xnL2QMOYYuMqI0CobsfzQYXKsUsJsj\0";
 const RUNNER_UID_MAGIC: &[u8] = b"DR1PWsJsM6KxNbng9Y38\0";
 
 #[cfg(all(feature = "target-native", target_family = "windows"))]
@@ -69,12 +70,13 @@ macro_rules! bail {
     })
 }
 
-fn patch_runner(arch: &str, exec_name: &str, uid: &str) -> io::Result<Vec<u8>> {
+fn patch_runner(arch: &str, exec_name: &str, target_name: &str, uid: &str) -> io::Result<Vec<u8>> {
     // Read runner executable in memory
     let runner_contents = RUNNER_BY_ARCH.get(arch).unwrap();
     let mut buf = runner_contents.to_vec();
 
     write_magic(&mut buf, RUNNER_UID_MAGIC, uid);
+    write_magic(&mut buf, RUNNER_NAME_MAGIC, target_name);
     write_magic(&mut buf, RUNNER_EXEC_MAGIC, exec_name);
     Ok(buf)
 }
@@ -247,6 +249,15 @@ fn main() -> Result<(), Box<dyn Error>> {
             .takes_value(true)
             .required(false)
             .default_value("9"))
+        .arg(Arg::with_name("unpack_directory")
+            .short("u")
+            .long("unpack_directory")
+            .value_name("unpack_directory")
+            .help("Sets the application unpack directory name. Defaults to the name of the executable.")
+            .display_order(10)
+            .takes_value(true)
+            .required(false)
+            .default_value(""))
         .get_matches();
 
     if RUNNER_BY_ARCH.is_empty() {
@@ -284,6 +295,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         bail!("Executable name is too long, please consider using a shorter name");
     }
 
+    let target_name = args.value_of("unpack_directory").unwrap();
+    if exec_name.len() >= RUNNER_NAME_MAGIC.len() {
+        bail!("Unpack directory name is too long, please consider using a shorter name");
+    }
+
     let do_check_exec_existence = !args.is_present("disable_exec_check");
     if do_check_exec_existence {
         let exec_path = Path::new(input_dirs[0]).join(exec_name);
@@ -302,7 +318,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         .parse::<u32>()
         .unwrap();
 
-    let runner_buf = patch_runner(&arch, &exec_name, &uid)?;
+    let runner_buf = patch_runner(&arch, &exec_name, &target_name, &uid)?;
 
     create_tgz(&input_dirs, &main_tgz_path, compression)?;
 

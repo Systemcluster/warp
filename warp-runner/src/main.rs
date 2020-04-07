@@ -16,10 +16,15 @@ mod executor;
 mod extractor;
 
 static TARGET_FILE_NAME_BUF: &[u8] = b"tVQhhsFFlGGD3oWV4lEPST8I8FEPP54IM0q7daes4E1y3p2U2wlJRYmWmjPYfkhZ0PlT14Ls0j8fdDkoj33f2BlRJavLj3mWGibJsGt5uLAtrCDtvxikZ8UX2mQDCrgE\0";
+static TARGET_DIR_NAME_BUF: &[u8] = b"4XMKSjaEZN9eC9LlptwBG3A7ysWD0L5hNK6tNrOiEd0p76Fu3ImTpcUjgMoWGyO1JS0Db2gqmlVEH7rW12vSmLN8x6M1GS0nE5xnL2QMOYYuMqI0CobsfzQYXKsUsJsj\0";
 static TARGET_UID_BUF: &[u8] = b"DR1PWsJsM6KxNbng9Y38\0";
 
 fn build_uid() -> &'static str {
     read_magic("TARGET_UID_BUF", &TARGET_UID_BUF)
+}
+
+fn target_dir_name() -> &'static str {
+    read_magic("TARGET_DIR_NAME_BUF", &TARGET_DIR_NAME_BUF)
 }
 
 fn target_file_name() -> &'static str {
@@ -83,7 +88,14 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let build_uid = build_uid();
     let self_path = env::current_exe()?;
-    let self_file_name = self_path.file_name().unwrap().to_string_lossy();
+    let self_file_name = {
+        let target_override = target_dir_name();
+        if target_override.is_empty() {
+            self_path.file_name().unwrap().to_string_lossy()
+        } else {
+            target_override.into()
+        }
+    };
 
     let cache_path = cache_path(&self_file_name, &build_uid);
     trace!("self_path={:?}", self_path);
