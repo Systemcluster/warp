@@ -1,3 +1,5 @@
+#![cfg_attr(feature = "no-console", windows_subsystem = "windows")]
+
 extern crate dirs;
 #[macro_use]
 extern crate log;

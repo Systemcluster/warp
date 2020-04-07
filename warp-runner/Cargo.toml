@@ -17,3 +17,4 @@ simple_logger = "1.6.0"
 default=[]
 runtime-path-alternative = []
 runtime-path-windows-temp = []
+no-console=[]
