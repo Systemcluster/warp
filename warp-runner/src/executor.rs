@@ -10,13 +10,13 @@ use std::path::Path;
 use std::process::Command;
 use std::process::Stdio;
 
-pub fn execute(target: &Path) -> io::Result<i32> {
+pub fn execute(target: &Path, set_current_dir: bool) -> io::Result<i32> {
     trace!("target={:?}", target);
 
     let args: Vec<String> = env::args().skip(1).collect();
     trace!("args={:?}", args);
 
-    do_execute(target, &args)
+    do_execute(target, set_current_dir, &args)
 }
 
 #[cfg(target_family = "unix")]
@@ -26,7 +26,7 @@ fn ensure_executable(target: &Path) {
 }
 
 #[cfg(target_family = "unix")]
-fn do_execute(target: &Path, args: &[String]) -> io::Result<i32> {
+fn do_execute(target: &Path, set_current_dir: bool, args: &[String]) -> io::Result<i32> {
     ensure_executable(target);
 
     let mut command = Command::new(target);
@@ -35,8 +35,7 @@ fn do_execute(target: &Path, args: &[String]) -> io::Result<i32> {
         .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit());
-    #[cfg(feature = "current_dir")]
-    {
+    if set_current_dir {
         command = command.current_dir(env::current_dir()?);
     }
     Ok(command.spawn()?.wait()?.code().unwrap_or(1))
@@ -56,7 +55,7 @@ fn is_script(target: &Path) -> bool {
 }
 
 #[cfg(target_family = "windows")]
-fn do_execute(target: &Path, args: &[String]) -> io::Result<i32> {
+fn do_execute(target: &Path, set_current_dir: bool, args: &[String]) -> io::Result<i32> {
     let target_str = target.as_os_str().to_str().unwrap();
 
     if is_script(target) {
@@ -71,8 +70,7 @@ fn do_execute(target: &Path, args: &[String]) -> io::Result<i32> {
             .stdin(Stdio::inherit())
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit());
-        #[cfg(feature = "current_dir")]
-        {
+        if set_current_dir {
             command = command.current_dir(env::current_dir()?);
         }
         Ok(command.spawn()?.wait()?.code().unwrap_or(1))
@@ -83,8 +81,7 @@ fn do_execute(target: &Path, args: &[String]) -> io::Result<i32> {
             .stdin(Stdio::inherit())
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit());
-        #[cfg(feature = "current_dir")]
-        {
+        if set_current_dir {
             command = command.current_dir(env::current_dir()?);
         }
         Ok(command.spawn()?.wait()?.code().unwrap_or(1))

@@ -32,6 +32,10 @@ const RUNNER_EXEC_MAGIC: &[u8] = b"tVQhhsFFlGGD3oWV4lEPST8I8FEPP54IM0q7daes4E1y3
 const RUNNER_NAME_MAGIC: &[u8] = b"4XMKSjaEZN9eC9LlptwBG3A7ysWD0L5hNK6tNrOiEd0p76Fu3ImTpcUjgMoWGyO1JS0Db2gqmlVEH7rW12vSmLN8x6M1GS0nE5xnL2QMOYYuMqI0CobsfzQYXKsUsJsj\0";
 const RUNNER_UID_MAGIC: &[u8] = b"DR1PWsJsM6KxNbng9Y38\0";
 
+static RUNNER_USE_TEMP_DIR_MAGIC: &[u8] = b"hCq8W43N1AcLKGqpa2rj\0";
+static RUNNER_USE_ALTERNATIVE_PATH_MAGIC: &[u8] = b"Wh81O21Yrq2hGxJAKB1P\0";
+static RUNNER_SET_CURRENT_DIR_MAGIC: &[u8] = b"RfZTmxJoQB17TQtBJqux\0";
+
 #[cfg(all(feature = "target-native", target_family = "windows"))]
 const RUNNER_NATIVE: &[u8] = include_bytes!("../../target/release/warp-runner.exe");
 #[cfg(all(feature = "target-native", not(target_family = "windows")))]
@@ -70,7 +74,15 @@ macro_rules! bail {
     })
 }
 
-fn patch_runner(arch: &str, exec_name: &str, target_name: &str, uid: &str) -> io::Result<Vec<u8>> {
+fn patch_runner(
+    arch: &str,
+    exec_name: &str,
+    target_name: &str,
+    uid: &str,
+    use_temp_dir: &str,
+    use_alternate_path: &str,
+    set_working_directory: &str,
+) -> io::Result<Vec<u8>> {
     // Read runner executable in memory
     let runner_contents = RUNNER_BY_ARCH.get(arch).unwrap();
     let mut buf = runner_contents.to_vec();
@@ -78,6 +90,18 @@ fn patch_runner(arch: &str, exec_name: &str, target_name: &str, uid: &str) -> io
     write_magic(&mut buf, RUNNER_UID_MAGIC, uid);
     write_magic(&mut buf, RUNNER_NAME_MAGIC, target_name);
     write_magic(&mut buf, RUNNER_EXEC_MAGIC, exec_name);
+    write_magic(&mut buf, RUNNER_USE_TEMP_DIR_MAGIC, use_temp_dir);
+    write_magic(
+        &mut buf,
+        RUNNER_USE_ALTERNATIVE_PATH_MAGIC,
+        use_alternate_path,
+    );
+    write_magic(
+        &mut buf,
+        RUNNER_SET_CURRENT_DIR_MAGIC,
+        set_working_directory,
+    );
+
     Ok(buf)
 }
 
@@ -261,6 +285,30 @@ fn main() -> Result<(), Box<dyn Error>> {
             .takes_value(true)
             .required(false)
             .default_value(""))
+        .arg(Arg::with_name("use_temp_dir")
+            .short("p")
+            .long("use_temp_dir")
+            .value_name("use_temp_dir")
+            .help("Place the application unpack directory inside the %TEMP% directory on Windows")
+            .display_order(11)
+            .takes_value(false)
+            .required(false))
+        .arg(Arg::with_name("use_alternate_path")
+            .short("l")
+            .long("use_alternate_path")
+            .value_name("use_alternate_path")
+            .help("Use <appname>/app instead of warp/packages/<appname> as the application unpack directory tree")
+            .display_order(12)
+            .takes_value(false)
+            .required(false))
+        .arg(Arg::with_name("set_working_directory")
+            .short("w")
+            .long("set_working_directory")
+            .value_name("set_working_directory")
+            .help("Set the working directory of the launched application to the directory of the packed executable")
+            .display_order(13)
+            .takes_value(false)
+            .required(false))
         .get_matches();
 
     if RUNNER_BY_ARCH.is_empty() {
@@ -309,19 +357,42 @@ fn main() -> Result<(), Box<dyn Error>> {
         check_executable_exists(&exec_path);
     }
 
-    let mut uid: String = "".to_string();
-    let do_generate_uid = args.is_present("unique_id");
-    if do_generate_uid {
-        uid = generate_uid();
-    }
-
     let compression = args
         .value_of("compression")
         .unwrap()
         .parse::<u32>()
         .unwrap();
 
-    let runner_buf = patch_runner(&arch, &exec_name, &target_name, &uid)?;
+    let uid = if args.is_present("unique_id") {
+        generate_uid()
+    } else {
+        "".to_string()
+    };
+    let use_temp_dir = if args.is_present("use_temp_dir") {
+        "true".to_string()
+    } else {
+        "".to_string()
+    };
+    let use_alternate_path = if args.is_present("use_alternate_path") {
+        "true".to_string()
+    } else {
+        "".to_string()
+    };
+    let set_working_directory = if args.is_present("set_working_directory") {
+        "true".to_string()
+    } else {
+        "".to_string()
+    };
+
+    let runner_buf = patch_runner(
+        &arch,
+        &exec_name,
+        &target_name,
+        &uid,
+        &use_temp_dir,
+        &use_alternate_path,
+        &set_working_directory,
+    )?;
 
     create_tgz(&input_dirs, &main_tgz_path, compression)?;
 

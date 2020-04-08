@@ -15,7 +15,4 @@ simple_logger = "1.6.0"
 
 [features]
 default=[]
-runtime-path-alternative = []
-runtime-path-windows-temp = []
 no-console=[]
-current-dir=[]
